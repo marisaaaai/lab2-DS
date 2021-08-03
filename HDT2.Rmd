@@ -1,0 +1,97 @@
+---
+title: "HDT2"
+author: "Marisa Montoya, Majo Morales, Luis Garcia y Juanfer De Leon"
+date: "8/2/2021"
+output: html_document
+---
+##Analisis exploratorio
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(epiDisplay)
+library(forecast)
+library(tseries)
+library(fUnitRoots)
+library(ggfortify)
+
+setwd('C:/Users/Marisa Montoya}/lab2-DS')
+consumo <- read.csv("DatosConsumoCombustibles.csv")
+importacion <- read.csv("DatosImportacionCombustibles.csv")
+
+
+```
+
+###Consumo Dataset
+```{r Graficas1 consumo, echo=FALSE}
+str(consumo)
+```
+
+Podemos ver que todas las variables tratadas en las datasets son variables cuantitativas, por lo que haremos histogramas de las variables. 
+
+```{r hist consumo, echo=FALSE}
+hist(x= consumo$X, main=paste("Histograma de X"))
+hist(x= consumo$Anio, main=paste("Histograma de Anio"))
+tab1(consumo$Anio, sort.group = "decreasing")
+hist(x= consumo$Mes, main=paste("Histograma de Mes"))
+hist(x= consumo$GasolinaSuper, main=paste("Histograma de GasolinaSuper"))
+hist(x= consumo$GasolinaRegular, main=paste("Histograma de GasolinaRegular"))
+hist(x= consumo$TotalGasolinas, main=paste("Histograma de TotalGasolinas"))
+hist(x= consumo$Diesel, main=paste("Histograma de Diesel"))
+hist(x= consumo$DieselLS, main=paste("Histograma de DieselLS"))
+hist(x= consumo$DieselULS, main=paste("Histograma de DieselULS"))
+hist(x= consumo$TotalDiesel, main=paste("Histograma de TotalDiesel"))
+hist(x= consumo$GLP, main=paste("Histograma de GLP"))
+hist(x= consumo$GasolinaAviacion, main=paste("Histograma de GasolinaAviacion"))
+hist(x= consumo$Kerosina, main=paste("Histograma de Kerosina"))
+hist(x= consumo$TurboJet, main=paste("Histograma de TurboJet"))
+hist(x= consumo$Bunker, main=paste("Histograma de Bunker"))
+hist(x= consumo$Asfalto, main=paste("Histograma de Asfalto"))
+hist(x= consumo$PetCoke, main=paste("Histograma de PetCoke"))
+hist(x= consumo$AceitesLubricantes, main=paste("Histograma de AceitesLubricantes"))
+hist(x= consumo$GrasasLubricantes, main=paste("Histograma de GrasasLubricantes"))
+hist(x= consumo$Solventes, main=paste("Histograma de Solventes"))
+hist(x= consumo$Naftas, main=paste("Histograma de Naftas"))
+hist(x= consumo$Ceras, main=paste("Histograma de Ceras"))
+hist(x= consumo$CrudoNacional, main=paste("Histograma de CrudoNacional"))
+hist(x= consumo$Butano, main=paste("Histograma de Butano"))
+hist(x= consumo$Orimulsion, main=paste("Histograma de Orimulsion"))
+hist(x= consumo$MezclasOleosas, main=paste("Histograma de MezclasOleosas"))
+hist(x= consumo$Total, main=paste("Histograma de Total"))
+
+```
+
+Variable X: no sigue distribución normal, y es lo esperado ya que X es una variable diferente para los datos, como un ID. 
+
+Variable Anio: No sigue una distribucion normal tampoco, pero nos muestra que hay una frecuencia mayor en los primeros años comenzando en 2000, luego las frecuencias en los demas años son similares hasta 2021, cuando los datos son muy pocos. 
+
+Variable mes: No sigue una distribución normal tampoco.
+
+Variable Gasolina Super: No sigue una distribución normal. 
+
+Variable Gasolina Regular: No sigue una distribución normal. 
+
+Variable Gasolina Diesel: Si sigue una distribución normal, por lo que pueda que tenga un comportamiento peculiar en el estudio de las series lineales. 
+
+####Cruce de variables 
+Al estar trabajando con las variables de gasolina, en los cruces de variables los haremos siempre con las variables de gasolinaSuper, Regular y Diesel.
+
+```{r cruce de variables, echo=FALSE}
+plot(y=consumo$GasolinaSuper,x=consumo$Anio,ylab="Gasolina Super", xlab="Anio")
+
+```
+De este cruce de variables podemos ver que puede que exista un tipo de tendencia, que con los años, el consumo de gasolina super creció con los años. 
+
+```{r echo=FALSE}
+plot(y=consumo$GasolinaRegular,x=consumo$Anio,ylab="Gasolina Regular", xlab="Anio")
+plot(y=consumo$Diesel,x=consumo$Anio,ylab="Gasolina Diesel", xlab="Anio")
+```
+Podemos ver que lo mismo sucedió con gasolina Regular y los años, pero otra vez, es la diesel la que tiene un comportamiento irregular. 
+
+Ahora vamos a hacer el cruce de variables pero con meses.
+```{r}
+plot(y=consumo$GasolinaSuper,x=consumo$Mes,ylab="Gasolina Super", xlab="Mes")
+plot(y=consumo$GasolinaRegular,x=consumo$Mes,ylab="Gasolina Regular", xlab="Mes")
+plot(y=consumo$Diesel,x=consumo$Mes,ylab="Gasolina Diesel", xlab="Mes")
+```
+
+Ahora vemos que las variables se comportan de una manera aleatoria conforme a los meses del año. Ya sea cualquier tipo de las gasolinas tratadas. 
