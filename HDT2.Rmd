@@ -8,11 +8,19 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+#install.packages("xts")
+# install.packages("forecast")
+# install.packages("fUnitRoots")
+# install.packages("ggfortify")
+# install.packages("tsbox")
 library(epiDisplay)
 library(forecast)
 library(tseries)
 library(fUnitRoots)
 library(ggfortify)
+library("xts")
+library(tsbox)
+
 
 setwd('C:/Users/Marisa Montoya}/lab2-DS')
 consumo <- read.csv("DatosConsumoCombustibles.csv")
@@ -83,7 +91,7 @@ De este cruce de variables podemos ver que puede que exista un tipo de tendencia
 
 ```{r echo=FALSE}
 plot(y=consumo$GasolinaRegular,x=consumo$Anio,ylab="Gasolina Regular", xlab="Anio")
-plot(y=consumo$Diesel,x=consumo$Anio,ylab="Gasolina Diesel", xlab="Anio")
+plot(y=consumo$TotalDiesel,x=consumo$Anio,ylab="Gasolina Diesel", xlab="Anio")
 ```
 Podemos ver que lo mismo sucedió con gasolina Regular y los años, pero otra vez, es la diesel la que tiene un comportamiento irregular. 
 
@@ -91,7 +99,116 @@ Ahora vamos a hacer el cruce de variables pero con meses.
 ```{r}
 plot(y=consumo$GasolinaSuper,x=consumo$Mes,ylab="Gasolina Super", xlab="Mes")
 plot(y=consumo$GasolinaRegular,x=consumo$Mes,ylab="Gasolina Regular", xlab="Mes")
-plot(y=consumo$Diesel,x=consumo$Mes,ylab="Gasolina Diesel", xlab="Mes")
+plot(y=consumo$TotalDiesel,x=consumo$Mes,ylab="Gasolina Diesel", xlab="Mes")
 ```
 
 Ahora vemos que las variables se comportan de una manera aleatoria conforme a los meses del año. Ya sea cualquier tipo de las gasolinas tratadas. 
+
+Para comenzar con el analisis de series de tiempo nos encontramos con la necesidad de unir la columna de mes y anio en una sola columna en formato de fecha, luego crear diferentes data frames para los 3 tipos de gasolinas para hacer una linea del tiempo de cada una. 
+```{r Serie, echo=FALSE}
+consumo$Dia <- 1
+consumo$Date <- as.Date(with(consumo, paste(Anio, Mes, Dia,sep="-")), "%Y-%m-%d")
+
+cantSuper <- c(consumo$GasolinaSuper)
+superDate <- c(consumo$Date)
+consumoSuper <- data.frame(cantSuper,superDate)
+
+cantRegular <- c(consumo$GasolinaRegular)
+regularDate <- c(consumo$Date)
+consumoRegular <- data.frame(cantRegular,regularDate)
+
+cantDiesel <- c(consumo$TotalDiesel)
+dieselDate <- c(consumo$Date)
+consumoDiesel <- data.frame(cantDiesel,dieselDate)
+
+```
+
+####Linea de tiempo para consumo de gasolina super
+Primero se convierte el data frame en una serie de tiempo. Luego podemos observar el inicio, fin, frecuencia y vista de la linea del tiempo.
+```{r echo=FALSE}
+consumoGS_ts <- xts(consumoSuper$cantSuper, consumoSuper$superDate) 
+consumoGS_ts <-ts_ts(consumoGS_ts)
+train <- head(consumoGS_ts, round(length(consumoGS_ts) * 0.7))
+h <- length(consumoGS_ts) - length(train)
+test <- tail(consumoGS_ts, h)
+#Saber cuando empieza la serie y cuando termina
+start(consumoGS_ts)
+end(consumoGS_ts)
+#Saber la frecuencia de la serie
+frequency(consumoGS_ts)
+#Ver el grÃ¡fico de la serie
+plot(consumoGS_ts);
+
+```
+De esta linea podemos ver a primera vista que posee una tendencia a crecer, y que hay momentos en la linea de tiempo que hace que las varianzas tambien se vean afectadas y sean diferentes entre si. Podemos ver que se trata de una serie con frecuencia anual donde hay datos de todos los meses desde enero de 2000 hasta mayo del 2021.Como se puede ver la cantidad de galones vendidos va aumentando a medida que pasan los años.
+
+#####Descomposicion de la serie
+```{r echo=FALSE}
+dec.GS<-decompose(consumoGS_ts)
+plot(dec.GS)
+```
+
+Podemos observar una serie con tendencia a aumentar, que no es estacionaria en varianza, y además tiene estacionalidad.
+
+Ahora vemos los datos de inicio y fin del train y del test
+```{r echo=FALSE}
+#Saber cuando empieza la serie y cuando termina
+start(train)
+end(train)
+start(test)
+end(test)
+```
+
+
+#####Estimar los parámetros del modelo.
+Cómo no es estacionaria en varianza le haremos una transformación logaritmica para hacerla constante en varianza.
+```{r include=FALSE}
+logGS <- log(train)
+lambda <- BoxCox.lambda(train)
+boxcoxGS<-BoxCox(train,lambda)
+```
+
+Veremos si logramos estacionarizar la serie con esta transformación:
+
+```{r echo=FALSE}
+plot(decompose(logGS))
+plot(logGS)
+```
+Podemos observar que las varianzas si se pudieron hacer mas constantes, sin embargo, se pueden observar picos de varianza desiguales, lo cual puede ser un problema y concreta que no se pudo estacionarizar en varianza en su totalidad.
+
+Por lo que ahora trataremos de quitar la tendencia y estacionarizar en normalidad.
+```{r echo=FALSE}
+adfTest(train)
+unitrootTest(train)
+
+```
+Ambas pruebas de Dickey-Fuller Test nos demuestra que p es mayor a 0.05 por lo que no podemos rechazar Ho, y por ende, asumir que no hay raices unitarias. Por lo que la serie de tiempo no es estacionaria en media. 
+
+Por lo que debemos de hacer lo mismo pero con una diferenciacion en la serie de tiempo.
+```{r echo=FALSE}
+GS_diff<-diff(logGS)
+adfTest(diff(train))
+```
+Como se puede ver el valor de p ahora sí está por debajo de 0.05 por lo que se puede descartar la hipótesis nula de que existan raices unitarias. 
+
+Solo se hizo uso de una diferenciación, por lo que d es 1, pero para conocer p y q se debe de realizar un gráfico de autocorrelación y autocorrelación parcial.
+```{r}
+acf(logGS,50) 
+pacf(logGS,50) 
+
+```
+
+
+####Linea de tiempo para consumo de gasolina Regular
+```{r}
+consumoGR_ts <- xts(consumoRegular$cantRegular, consumoRegular$regularDate) 
+consumoGR_ts <-ts_ts(consumoGR_ts)
+#Saber cuando empieza la serie y cuando termina
+start(consumoGR_ts)
+end(consumoGR_ts)
+#Saber la frecuencia de la serie
+frequency(consumoGR_ts)
+#Ver el grÃ¡fico de la serie
+plot(consumoGR_ts)
+```
+
