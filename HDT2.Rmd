@@ -22,14 +22,15 @@ library("xts")
 library(tsbox)
 
 
-setwd('C:/Users/Marisa Montoya}/lab2-DS')
+#setwd('C:/Users/Marisa Montoya}/lab2-DS')
+setwd('C:/Users/LUIS PEDRO/lab2-DS')
 consumo <- read.csv("DatosConsumoCombustibles.csv")
 importacion <- read.csv("DatosImportacionCombustibles.csv")
 
 
 ```
 
-###Consumo Dataset
+### Consumo Dataset
 ```{r Graficas1 consumo, echo=FALSE}
 str(consumo)
 ```
@@ -104,6 +105,49 @@ plot(y=consumo$TotalDiesel,x=consumo$Mes,ylab="Gasolina Diesel", xlab="Mes")
 
 Ahora vemos que las variables se comportan de una manera aleatoria conforme a los meses del año. Ya sea cualquier tipo de las gasolinas tratadas. 
 
+### Analisis Importacion
+
+Breve resumen del data set de importaciones
+```{r echo=FALSE}
+print("Dimensiones")
+dim(importacion)
+print("Resumen")
+summary(importacion)
+print("Estructura")
+str(importacion)
+
+```
+
+
+Aqui se encuentran los histogramas de las variables cuantitativas para ver si hay normalidad aun que sea en las continuas.
+```{r BloqueDeHistogramas, echo=FALSE}
+hist(x= importacion$Anio, main=paste("Histograma de Anio"))
+hist(x= importacion$Mes, main=paste("Histograma de Mes"))
+hist(x= importacion$GasolinaSuper, main=paste("Histograma de Gasolina Super"))
+hist(x= importacion$GasolinaRegular, main=paste("Histograma de Gasolina Regular"))
+hist(x= importacion$TotalGasolinas, main=paste("Histograma de Gasolinas Totales"))
+hist(x= importacion$Diesel, main=paste("Histograma de Diesel "))
+hist(x= importacion$DieselLS, main=paste("Histograma de Diesel LS"))
+hist(x= importacion$DieselULS, main=paste("Histograma de Diesel ULS"))
+hist(x= importacion$TotalDiesel, main=paste("Histograma de Diesel Total"))
+
+
+```
+
+Cruze de variables con el anio y mes
+```{r CruzeDeVariables, echo=FALSE}
+plot(y=importacion$GasolinaSuper,x=importacion$Anio,ylab="Gasolina Super", xlab="Anio")
+plot(y=importacion$GasolinaRegular,x=importacion$Anio,ylab="Gasolina Regular", xlab="Anio")
+plot(y=importacion$TotalDiesel,x=importacion$Anio,ylab="Gasolina Total Diese", xlab="Anio")
+plot(y=importacion$GasolinaSuper,x=importacion$Mes,ylab="Gasolina Super", xlab="Meses")
+plot(y=importacion$GasolinaRegular,x=importacion$Mes,ylab="Gasolina Regular", xlab="Meses")
+plot(y=importacion$TotalDiesel,x=importacion$Mes,ylab="Gasolina Diesel", xlab="Meses")
+
+
+```
+
+
+
 Para comenzar con el analisis de series de tiempo nos encontramos con la necesidad de unir la columna de mes y anio en una sola columna en formato de fecha, luego crear diferentes data frames para los 3 tipos de gasolinas para hacer una linea del tiempo de cada una. 
 ```{r Serie, echo=FALSE}
 consumo$Dia <- 1
@@ -122,6 +166,9 @@ dieselDate <- c(consumo$Date)
 consumoDiesel <- data.frame(cantDiesel,dieselDate)
 
 ```
+
+
+
 
 ####Linea de tiempo para consumo de gasolina super
 Primero se convierte el data frame en una serie de tiempo. Luego podemos observar el inicio, fin, frecuencia y vista de la linea del tiempo.
