@@ -199,7 +199,97 @@ pacf(logGS,50)
 ```
 
 
-####Linea de tiempo para consumo de gasolina Regular
+#### Serie de tiempo Gasolina Super Importacion
+
+Union de columnas de tiempo
+```{r UnionColumnasSuper, echo=FALSE}
+
+
+datosImport <- read.csv(file = 'DatosImportacionCombustibles.csv')
+datosImport$Dia <- 1
+datosImport$Date <- as.Date(with(datosImport, paste(Anio, Mes, Dia,sep="-")), "%Y-%m-%d")
+
+cantSuper <- c(datosImport$GasolinaSuper)
+superDate <- c(datosImport$Date)
+importSuper <- data.frame(cantSuper,superDate)
+
+
+
+```
+
+Creando la serie de tiempo. Viendo incio, fin y frencuencia
+```{r CreandoSerieSuper, echo=FALSE}
+
+importSuper_ts <- xts(importSuper$cantSuper, importSuper$superDate) 
+importSuper_ts <-ts_ts(importSuper_ts)
+
+
+start(importSuper_ts)
+end(importSuper_ts)
+frequency(importSuper_ts)
+
+trainS <- head(importSuper_ts, round(length(importSuper_ts) * 0.7))
+hS <- length(importSuper_ts) - length(train)
+testS <- tail(importSuper_ts, h)
+
+
+```
+
+Creando el grafico de la serie
+```{r GraficaSerieSuper, echo=FALSE}
+
+plot(importSuper_ts)
+abline(reg=lm(importSuper_ts~time(importSuper_ts)), col=c("red"))
+
+
+```
+Se observa que es una serie de tiempo no estacionaria ya que su componente tendencia no es constante, si no que es creciente. Ademas, la varianza tampoco es constante.
+
+
+Descomponiendo la serie
+```{r DescomposicionSuper, echo=FALSE}
+dec.GS<-decompose(importSuper_ts)
+plot(dec.GS)
+
+```
+Se puede observar que la componente tendencia es creciente, la componente estacional si tiene un patron y la varianza no es constante. Se tendra que transformar
+
+Transformacion logaritmica para estacionar serie
+```{r}
+logSS <- log(trainS)
+lambda <- BoxCox.lambda(trainS)
+boxcoxGR<-BoxCox(trainS,lambda)
+
+plot(decompose(logSS))
+plot(logSS)
+
+
+```
+Al hacer la transformacion logaritmica, se observa que la serie se ha estabilizado un poco mas en media. Sin embargo en varianza sigue lejos de estar constante
+
+Ahora se haran las pruebas de DickeyFuller
+```{r}
+adfTest(trainS)
+unitrootTest(trainS)
+```
+Con las pruebas de Dickey-Fuller, se observa que p es mayor a 0.05. No se puede rechazar Ho y existen raices unitarias. Aunque la serie se vea mas estable en media, aun no es estacionaria en media
+
+
+Ahora se hace con una diferenciacion en la serie de tiempo
+```{r}
+GS_diff<-diff(logSS)
+adfTest(diff(trainS))
+```
+Ahora el valor p si es menor a 0.05. Ahora si se puede rechazar la Ho, y ahora no hay raices unitarias
+
+Valores p y q
+```{r}
+acf(logSS,50) 
+pacf(logSS,50)
+```
+
+
+####Linea de tiempo para consumo de gasolina Regular Importacion
 ```{r}
 consumoGR_ts <- xts(consumoRegular$cantRegular, consumoRegular$regularDate) 
 consumoGR_ts <-ts_ts(consumoGR_ts)
@@ -277,14 +367,14 @@ Prueba Dickey-Fuller
 adfTest(train)
 unitrootTest(train)
 ```
-El test Dickey-Fuller resulta con valores mayores a 0.05 por lo que Ho se rechaza. No hay raices unitarias. Se debe hacer una diferenciacion de la serie de tiempo. 
+El test Dickey-Fuller resulta con valores mayores a 0.05 por lo que Ho no se rechaza. Si hay raices unitarias. Se debe hacer una diferenciacion de la serie de tiempo. 
 
 Diferenciacion serie importacion Gasolina Regular
 ```{r}
 IR_diff<-diff(logIR)
 adfTest(diff(train))
 ```
-Al hacer este cambio el valor p si es menor a 0.05, ya se tienen raices unitarias. 
+Al hacer este cambio el valor p si es menor a 0.05, se rechaza Ho y ahora no hay raices unitarias 
 
 Valores p y q
 ```{r}
