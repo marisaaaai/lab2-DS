@@ -212,3 +212,148 @@ frequency(consumoGR_ts)
 plot(consumoGR_ts)
 ```
 
+```{r}
+###Analisis Importacion Gasolina Regular y Diesel
+datosImport <- read.csv(file = 'DatosImportacionCombustibles.csv')
+
+datosImport$Dia <- 1
+datosImport$Date <- as.Date(with(datosImport, paste(Anio, Mes, Dia,sep="-")), "%Y-%m-%d")
+
+cantRegular <- c(datosImport$GasolinaRegular)
+regularDate <- c(datosImport$Date)
+importRegular <- data.frame(cantRegular,regularDate)
+
+cantDiesel <- c(datosImport$TotalDiesel)
+dieselDate <- c(datosImport$Date)
+importDiesel <- data.frame(cantDiesel,dieselDate)
+```
+
+Inicio y fin de la importacion Gasolina Regular 
+```{r}
+importRegular_ts <- xts(importRegular$cantRegular, importRegular$regularDate) 
+importRegular_ts <-ts_ts(importRegular_ts)
+
+start(importRegular_ts)
+end(importRegular_ts) 
+
+train <- head(importRegular_ts, round(length(importRegular_ts) * 0.7))
+h <- length(importRegular_ts) - length(train)
+test <- tail(importRegular_ts, h)
+```
+Frecuencia serie importacion Gasolina Regular
+```{r}
+frequency(importRegular_ts)
+```
+
+Grafico de la serie importacion Gasolina Regular
+```{r}
+plot(importRegular_ts)
+abline(reg=lm(importRegular_ts~time(importRegular_ts)), col=c("red"))
+```
+De la grafica puedo observar que tiene tendencia a aumentar. No es estacionaria media
+
+Descomposicion serie importacion Gasolina Regular 
+```{r}
+dec.GS<-decompose(importRegular_ts)
+plot(dec.GS)
+```
+Por la descomposicion tampoco parece ser estacionaria en varianza. El factor aleatorio parece tener un patron por lo que no sera una serie util para predecir. Es necesario transformarla
+
+Transformacion log y grafico autocorrelacion serie importacion Gasolina Regular
+```{r}
+logIR <- log(train)
+lambda <- BoxCox.lambda(train)
+boxcoxGR<-BoxCox(train,lambda)
+
+plot(decompose(logIR))
+plot(logIR)
+
+acf(logIR)
+```
+No hay estacionariedad media 
+
+Prueba Dickey-Fuller
+```{r}
+adfTest(train)
+unitrootTest(train)
+```
+El test Dickey-Fuller resulta con valores mayores a 0.05 por lo que Ho se rechaza. No hay raices unitarias. Se debe hacer una diferenciacion de la serie de tiempo. 
+
+Diferenciacion serie importacion Gasolina Regular
+```{r}
+IR_diff<-diff(logIR)
+adfTest(diff(train))
+```
+Al hacer este cambio el valor p si es menor a 0.05, ya se tienen raices unitarias. 
+
+Valores p y q
+```{r}
+acf(logIR,50) 
+pacf(logIR,50) 
+```
+
+Inicio y fin de la importacion Gasolina Diesel 
+```{r}
+importDiesel_ts <- xts(importDiesel$cantDiesel, importDiesel$dieselDate) 
+importDiesel_ts <-ts_ts(importDiesel_ts)
+
+start(importDiesel_ts)
+end(importDiesel_ts) 
+
+train <- head(importDiesel_ts, round(length(importDiesel_ts) * 0.7))
+h <- length(importDiesel_ts) - length(train)
+test <- tail(importDiesel_ts, h)
+
+```
+Frecuencia serie importacion Gasolina Diesel
+```{r}
+frequency(importDiesel_ts)
+```
+
+Grafico de la serie importacion Gasolina Diesel
+```{r}
+plot(importDiesel_ts)
+abline(reg=lm(importDiesel_ts~time(importDiesel_ts)), col=c("red"))
+
+```
+De la grafica puedo observar que tiene tendencia a aumentar. No es estacionaria media
+
+Descomposicion serie importacion Gasolina Diesel 
+```{r}
+dec.GD<-decompose(importDiesel_ts)
+plot(dec.GD)
+```
+Por la descomposicion tampoco parece ser estacionaria en varianza. El factor aleatorio parece tener un patron por lo que no sera una serie util para predecir. Es necesario transformarla
+
+Transformacion log y grafico autocorrelacion serie importacion Gasolina Diesel
+```{r}
+logID <- log(train)
+lambda <- BoxCox.lambda(train)
+boxcoxGD<-BoxCox(train,lambda)
+
+plot(decompose(logID))
+plot(logID)
+
+acf(logID)
+```
+No hay estacionariedad media 
+
+Prueba Dickey-Fuller
+```{r}
+adfTest(train)
+unitrootTest(train)
+```
+El test Dickey-Fuller resulta con valores mayores a 0.05 por lo que Ho se rechaza. No hay raices unitarias. Se debe hacer una diferenciacion de la serie de tiempo. 
+
+Diferenciacion serie importacion Gasolina Diesel
+```{r}
+ID_diff<-diff(logID)
+adfTest(diff(train))
+```
+Al hacer este cambio el valor p si es menor a 0.05, ya se tienen raices unitarias. 
+
+Valores p y q
+```{r}
+acf(logID,50) 
+pacf(logID,50) 
+```
