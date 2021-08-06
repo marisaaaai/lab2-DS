@@ -276,8 +276,8 @@ end(importSuper_ts)
 frequency(importSuper_ts)
 
 trainS <- head(importSuper_ts, round(length(importSuper_ts) * 0.7))
-hS <- length(importSuper_ts) - length(train)
-testS <- tail(importSuper_ts, h)
+hS <- length(importSuper_ts) - length(trainS)
+testS <- tail(importSuper_ts, hS)
 
 
 ```
