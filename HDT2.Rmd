@@ -23,7 +23,7 @@ library(tsbox)
 
 
 #setwd('C:/Users/Marisa Montoya}/lab2-DS')
-setwd('C:/Users/LUIS PEDRO/lab2-DS')
+#setwd('C:/Users/LUIS PEDRO/lab2-DS')
 consumo <- read.csv("DatosConsumoCombustibles.csv")
 importacion <- read.csv("DatosImportacionCombustibles.csv")
 
@@ -785,3 +785,325 @@ Valores p y q
 acf(logID,50) 
 pacf(logID,50) 
 ```
+
+# Analisis Consumo
+
+
+```{r echo=FALSE}
+library(forecast)
+library(zoo)
+library(tseries)
+library(prophet)
+library(rstan)
+```
+
+## Análisis exploratorio - Box-Plot Diesel, Regular
+
+```{r echo=FALSE}
+datos <- read.csv("DatosConsumoCombustibles.csv",stringsAsFactors = F)
+datosFiltrados<-(datos[,c("Anio","GasolinaAviacion","GasolinaRegular","Diesel","DieselLS","DieselULS","AceitesLubricantes","GrasasLubricantes","Orimulsion","MezclasOleosas")])
+datosFiltrados[is.na(datosFiltrados)]<-0
+datosFiltrados[datosFiltrados$Anio>="2018","Diesel"]<-datosFiltrados[datosFiltrados$Anio>="2018","DieselLS"]
+```
+
+```{r echo=FALSE}
+# Separar datos en train y test
+
+trainD <- head(datosFiltrados$Diesel, round(length(datosFiltrados$Diesel) * 0.7))
+h <- length(datosFiltrados$Diesel) - length(trainD)
+testD <- tail(datosFiltrados$Diesel, h)
+
+trainR <- head(datosFiltrados$GasolinaRegular, round(length(datosFiltrados$GasolinaRegular) * 0.7))
+h <- length(datosFiltrados$GasolinaRegular) - length(trainR)
+testR <- tail(datosFiltrados$GasolinaRegular, h)
+```
+
+```{r echo=FALSE}
+# Separar los datos por anio
+
+anio2001 <- datosFiltrados[datosFiltrados$Anio == 2001,]
+anio2002 <- datosFiltrados[datosFiltrados$Anio == 2002,]
+anio2003 <- datosFiltrados[datosFiltrados$Anio == 2003,]
+anio2004 <- datosFiltrados[datosFiltrados$Anio == 2004,]
+anio2005 <- datosFiltrados[datosFiltrados$Anio == 2005,]
+anio2006 <- datosFiltrados[datosFiltrados$Anio == 2006,]
+anio2007 <- datosFiltrados[datosFiltrados$Anio == 2007,]
+anio2008 <- datosFiltrados[datosFiltrados$Anio == 2008,]
+anio2009 <- datosFiltrados[datosFiltrados$Anio == 2009,]
+anio2010 <- datosFiltrados[datosFiltrados$Anio == 2010,]
+anio2011 <- datosFiltrados[datosFiltrados$Anio == 2011,]
+anio2012 <- datosFiltrados[datosFiltrados$Anio == 2012,]
+anio2013 <- datosFiltrados[datosFiltrados$Anio == 2013,]
+anio2014 <- datosFiltrados[datosFiltrados$Anio == 2014,]
+anio2015 <- datosFiltrados[datosFiltrados$Anio == 2015,]
+anio2016 <- datosFiltrados[datosFiltrados$Anio == 2016,]
+anio2017 <- datosFiltrados[datosFiltrados$Anio == 2017,]
+anio2018 <- datosFiltrados[datosFiltrados$Anio == 2018,]
+anio2019 <- datosFiltrados[datosFiltrados$Anio == 2019,]
+anio2020 <- datosFiltrados[datosFiltrados$Anio == 2020,]
+
+last<- data.frame(anio2018$Diesel,anio2019$Diesel,anio2020$Diesel)
+
+```
+
+```{r echo=FALSE}
+# Diagramas de caja y bigotes
+
+boxplot(anio2001$Diesel, main = "Diesel 2001")
+boxplot(anio2001$GasolinaRegular, main = "Regular 2001")
+
+boxplot(anio2002$Diesel, main = "Diesel 2002")
+boxplot(anio2002$GasolinaRegular, main = "regular 2002")
+
+boxplot(anio2003$Diesel, main = "Diesel 2003")
+boxplot(anio2003$GasolinaRegular, main = "Regular 2003")
+
+boxplot(anio2004$Diesel, main = "Diesel 2004")
+boxplot(anio2004$GasolinaRegular, main = "Regular 2004")
+
+boxplot(anio2005$Diesel, main = "Diesel 2005")
+boxplot(anio2005$GasolinaRegular, main = "Regular 2005")
+
+boxplot(anio2006$Diesel, main = "Diesel 2006")
+boxplot(anio2006$GasolinaRegular, main = "Regular 2006")
+
+boxplot(anio2007$Diesel, main = "Diesel 2007")
+boxplot(anio2007$GasolinaRegular, main = "Regular 2007")
+
+boxplot(anio2008$Diesel, main = "Diesel 2008")
+boxplot(anio2008$GasolinaRegular, main = "Regular 2008")
+
+boxplot(anio2009$Diesel, main = "Diesel 2009")
+boxplot(anio2009$GasolinaRegular, main = "Regular 2009")
+
+boxplot(anio2010$Diesel, main = "Diesel 2010")
+boxplot(anio2010$GasolinaRegular, main = "Regular 2010")
+
+boxplot(anio2011$Diesel, main = "Diesel 2011")
+boxplot(anio2011$GasolinaRegular, main = "Regular 2011")
+
+boxplot(anio2012$Diesel, main = "Diesel 2012")
+boxplot(anio2012$GasolinaRegular, main = "Regular 2012")
+
+boxplot(anio2013$Diesel, main = "Diesel 2013")
+boxplot(anio2013$GasolinaRegular, main = "Regular 2013")
+
+boxplot(anio2014$Diesel, main = "Diesel 2014")
+boxplot(anio2014$GasolinaRegular, main = "Regular 2014")
+
+boxplot(anio2015$Diesel, main = "Diesel 2015")
+boxplot(anio2015$GasolinaRegular, main = "Regular 2015")
+
+boxplot(anio2016$Diesel, main = "Diesel 2016")
+boxplot(anio2016$GasolinaRegular, main = "Regular 2016")
+
+boxplot(anio2017$Diesel, main = "Diesel 2017")
+boxplot(anio2017$GasolinaRegular, main = "Regular 2017")
+
+boxplot(anio2018$Diesel, main = "Diesel 2018")
+boxplot(anio2018$GasolinaRegular, main = "Regular 2018")
+
+boxplot(anio2019$Diesel, main = "Diesel 2019")
+boxplot(anio2019$GasolinaRegular, main = "Regular 2019")
+
+boxplot(anio2020$Diesel, main = "Diesel 2020")
+boxplot(anio2020$GasolinaRegular, main = "Regular 2020")
+
+boxplot(last, main="Diesel 2018, 2019, 2020")
+
+```
+
+Luego de realizar el analisis exploratorio de las variables continuas, en relacion a los tipos de gasolina Diesel, Regular y Super, se observo que estas tienen una distribucion normal en base a los diagramas de caja mostrados anteriormente. En ciertos diagramas se puede apreciar sesgos positivos o negativos, sin embargo, estos no son representativos para indicar que no muestran una distribucion normal. En base a lo anterior, se puede indicar que se puede obtener una serie de tiempo del conjunto de datos. Es necesario determinar si la serie de tiempo del conjunto de datos presenta estacionalidad, asi como tambien determinar si se debe realizar una normalizacion en los datos para poder brindar una mejor prediccion que se lograra con los modelos.
+
+## Series de Tiempo
+
+```{r echo=FALSE}
+# Series de tiempo
+
+dieselST<-ts(datosFiltrados$Diesel,start = 2001, end = 2020,frequency = 12)
+regularST<-ts(datosFiltrados$GasolinaRegular,start = 2001,end = 2020,frequency = 12)
+
+# View(dieselST)
+# View(regularST)
+
+plot(dieselST)
+plot(regularST)
+
+```
+
+Al encontrar las series de tiempo se obtuvieron los datos de las graficas anteriores. Sin embargo es necesario descomponer estas:
+
+```{r echo=FALSE}
+
+# Decompose
+
+plot(decompose(dieselST))
+plot(decompose(regularST))
+
+```
+
+Al descomponer la serie de tiempo se puede observar que ninguna de las series son estacionarias ya que la media no es constante al igual que la varianza. 
+
+### Estacionariedad
+
+Para deterimnar la estacionariedad se realizaron los siguientes graficos que muestra la tendencia de cada serie, factor aleatorio y estacionariedad. 
+
+```{r echo=FALSE}
+# Estacionaridad
+
+varDiesel <-cbind(dieselST)
+# plot.ts(varDiesel)
+
+varRegular <-cbind(regularST)
+# plot.ts(varRegular)
+
+lambda <- BoxCox.lambda(dieselST)
+# print(lambda)
+# plot(BoxCox(dieselST, lambda = -0.06583995))
+
+lambda <- BoxCox.lambda(regularST)
+# print(lambda)
+# plot(BoxCox(regularST, lambda = -0.3511798))
+
+# plot(aggregate(dieselST,FUN=mean))
+dec.Diesel<-decompose(na.StructTS(dieselST))
+plot(dec.Diesel)
+plot(dec.Diesel$seasonal)
+
+# plot(aggregate(regularST,FUN=mean))
+dec.Regular<-decompose(na.StructTS(regularST))
+plot(dec.Regular)
+plot(dec.Regular$seasonal)
+
+```
+
+En las graficas anteriores se puede apreicar como estas siguen un patron, esto es indicador de que cumplen con estacionariedad. Se podria indicar que la serie de tiempo del diesel es estacionaria en media, ya que se mantiene relativamente constante, sin embargo, en los ultimos años esta oresenta una baja. Mientras que la serie de tiempo de la gasolina regular no es estacionaria en media. 
+
+
+```{r echo=FALSE}
+# Logaritmo a las series de tiempo
+
+logDieselST <- log(dieselST)
+logRegularST <- log(regularST)
+
+# Raices Unitarias
+
+adf.test(logDieselST)
+adf.test(logRegularST)
+
+# Valores Q y D
+
+acf(logDieselST, 50)
+acf(logRegularST, 50)
+
+pacf(diff(logDieselST), 50)
+pacf(diff(logRegularST), 50)
+
+```
+
+## Modelos
+
+### Modelo Diesel
+
+```{r echo=FALSE}
+# Modelo Diesel
+
+arimaDiesel<- auto.arima(dieselST)
+
+fit <- arima(log(dieselST), c(0,1,1), seasonal = list(order = c(0,1,1), period = 12))
+pred<- predict(fit, n.ahead = 10*12)
+ts.plot(dieselST,2.718^pred$pred, log = "y", lty = c(1,3))
+
+fit2 <- arima(log(dieselST), c(2, 1, 1),seasonal = list(order = c(0, 1, 1), period = 12))
+
+forecastAP <- forecast(fit2, level = c(95), h = 50)
+autoplot(forecastAP)
+
+```
+
+### Modelo Regular
+```{r echo=FALSE}
+arimaRegular<- auto.arima(regularST)
+
+fit <- arima(log(regularST), c(1,1,2), seasonal = list(order = c(1,1,1), period = 12))
+pred<- predict(fit, n.ahead = 10*12)
+ts.plot(regularST,2.718^pred$pred, log = "y", lty = c(1,3))
+
+fit2 <- arima(log(regularST), c(1, 1, 2),seasonal = list(order = c(0, 1, 1), period = 12))
+
+forecastAP <- forecast(fit2, level = c(95), h = 50)
+autoplot(forecastAP)
+```
+
+```{r echo=FALSE}
+# Datos entrenamiento
+
+dieselSTEntrenamiento<-ts(datosFiltrados$Diesel,start = 2001, end = 2015,frequency = 12)
+regularSTEntrenamiento<-ts(datosFiltrados$GasolinaRegular,start = 2001,end = 2015,frequency = 12)
+
+# Datos Prueba
+
+dieselSTTest<-ts(datosFiltrados$Diesel,start = 2016, end = 2020,frequency = 12)
+regularSTTest<-ts(datosFiltrados$GasolinaRegular,start = 2016,end = 2020,frequency = 12)
+
+dieselSTTest<-ts(datosFiltrados$Diesel,start = 2016, end = 2020,frequency = 12)
+regularSTTest<-ts(datosFiltrados$GasolinaRegular,start = 2016,end = 2020,frequency = 12)
+
+
+```
+
+## Prophet
+### Gasolina diesel
+```{r echo=FALSE}
+# Training
+prophetDieseldf <- data.frame(ds=as.Date(yearmon(time(dieselSTEntrenamiento))),y = as.matrix(dieselSTEntrenamiento))
+# Test
+prophetDieseltest <- data.frame(ds=as.Date(yearmon(time(dieselSTTest))),y = as.matrix(dieselSTTest))
+
+# head(prophetDieseldf)
+
+fitProphet<-prophet(prophetDieseldf,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = 49,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+
+
+pred<-tail(p,49)
+pred$y<-prophetDieseltest$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+  geom_line(size=1, alpha=0.8) +
+  geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+  geom_line(data=pred, aes(x=ds, y=y),color="red")
+
+```
+
+### Gasolina Regular
+
+```{r echo=FALSE}
+prophetRegulardf <- data.frame(ds=as.Date(yearmon(time(regularSTEntrenamiento))),y = as.matrix(regularSTEntrenamiento))
+prophetRegulartest <- data.frame(ds=as.Date(yearmon(time(regularSTTest))),y = as.matrix(regularSTTest))
+
+head(prophetRegulardf)
+
+fitProphet<-prophet(prophetRegulardf,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = 49,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+
+
+pred<-tail(p,49)
+pred$y<-prophetRegulartest$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+  geom_line(size=1, alpha=0.8) +
+  geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+  geom_line(data=pred, aes(x=ds, y=y),color="red")
+
+```
+
+En base a las graficas anteriores se puede indicar que el modelo fue eficiente Dado que se ajusto el conjunto de datos lo mas posible, se puede observar que hay una cercania entre la prediccion y los datos reales. El mejor modelo producido es el de diesel ya que tiene menos variacion, mientras que la gasolina regular se dificulto la prediccion.  
