@@ -244,7 +244,142 @@ acf(logGS,50)
 pacf(logGS,50) 
 
 ```
+Del ACF podemos ver que la gráfica no se anula y tiene un decrecimiento rapido. pero en el PACF se anula luego de 1, por lo que q es 1. P no se anula en ningun momento. por lo que proponemos un modelo, podemos pensar que p es 4.
 
+Por lo que podemos proponer un modelo ARIMA con 
+p =4
+q=1
+d = 1
+
+Veamos si hay estacionalidad en la serie. Si volvemos a ver la descomposición de la serie en su componente estacional.
+
+
+```{r echo=FALSE}
+decTrain <- decompose(train)
+plot(decTrain$seasonal)
+```
+
+
+Al parecer sí existe estacionalidad en la serie. Para tener una idea de los parámetros estacionales veremos las funciones de autocorrelación y autocorrelación parcial con 36 resagos para ver en que momentos son los picos estacionales. Se usará la serie estacionarizada.
+
+```{r echo=FALSE}
+Acf(diff(logGS),36)
+Pacf(diff(logGS),36)
+
+```
+
+Cómo podemos ver en la función de autocorrelación tenemos un decaimiento en los picos estacionales, 12, 18, 24, 30, 36, y en la función de autocorrelación parcial, un pico significativo en el retardo 12. Eso sugiere que los parámetros del componente estacional son P = 2, D = 1 (el período es de 6 meses por lo que se puede hacer una diferenciación estacional), y Q=1.
+
+Creamos los analisis del modelo 
+Hacemos un analisis de coeficientes del AutoArima y Arima. 
+
+```{r echo=FALSE}
+fitArima <- arima(logGS,order=c(1,1,2),seasonal = c(2,1,1))
+
+fitAutoArima <- auto.arima(train)
+library(lmtest)
+coeftest(fitArima)
+coeftest(fitAutoArima)
+
+```
+
+Vemos que todos los coeficientes son significativos y vamos a hacer un analisis de residuos.
+
+Análisis de Residuales
+Los residuales deben ser lo más parecidos posible a un ruido blanco. Esto es que sean aleatorios (no están correlacionados entre sí), y que estén distribuidos normalmente. Analizamos los residuos de nuestro modelo fitArima
+
+```{r echo=FALSE}
+qqnorm(fitArima$residuals)
+checkresiduals(fitArima)
+
+```
+
+Según los gráficos podemos ver que la distribución de los datos parece ser normal, y que no hay correlaciones significativas.
+Según el test de Ljung-Box los datos se distribuyen de forma independiente puesto que el p-value es mayor a 0.05, por lo que no se puede rechazar la hipótesis nula. Esto significa que el modelo generado es aceptable para predecir.
+
+Analizando los residuos del modelo generado de forma automática por R tenemos los siguientes resultados:
+
+```{r echo=FALSE}
+qqnorm(fitAutoArima$residuals)
+qqline(fitAutoArima$residuals)
+checkresiduals(fitAutoArima)
+
+```
+
+El modelo autogenerado no es un modelo aceptable para predecir. 
+
+##Predicción con el modelo generado
+
+```{r echo=FALSE}
+fitArima %>%
+  forecast(h) 
+plot(forecast(fitArima,h))
+```
+
+Como se puede ver, el modelo es bueno para predecir tendencias. Sin embargo, no se ve muy acertado para los datos que se tiene en el conjunto de test. 
+
+###Prophet algoritmo de FB
+```{r echo=FALSE}
+#install.packages('Rcpp')
+library(Rcpp)
+#install.packages('rlang')
+library(rlang)
+library(zoo)
+library(prophet)
+
+df<-data.frame(ds=as.Date(as.yearmon(time(train))),y=as.matrix(train) )
+testdf<-data.frame(ds=as.Date(as.yearmon(time(test))),y=as.matrix(test) )
+fitProphet<-prophet(df,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = h,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+```
+
+Veamos que tanto se acerca la predicción a los datos reales, en el siguiente gráfico. Los datos del conjunto de prueba se representan en rojo mientras los datos de la predicción se representan en azul.
+
+
+```{r echo=FALSE}
+pred<-tail(p,h)
+pred$y<-testdf$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+   geom_line(size=1, alpha=0.8) +
+   geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+   geom_line(data=pred, aes(x=ds, y=y),color="red")
+```
+
+como podemos observar, las predicciones realizadas por prophet fueron peores y erroneas en comparacion con la funcion de Arima.
+
+##Prediccion de los ultimos 3 años
+```{r}
+train <- head(consumoGS_ts, round(length(consumoGS_ts) * 0.891632653))
+h <- length(consumoGS_ts) - length(train)
+test <- tail(consumoGS_ts, h)
+end(train)
+fitArima %>%
+  forecast(h) 
+plot(forecast(fitArima,h))
+df<-data.frame(ds=as.Date(as.yearmon(time(train))),y=as.matrix(train) )
+testdf<-data.frame(ds=as.Date(as.yearmon(time(test))),y=as.matrix(test) )
+fitProphet<-prophet(df,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = h,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+pred<-tail(p,h)
+pred$y<-testdf$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+   geom_line(size=1, alpha=0.8) +
+   geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+   geom_line(data=pred, aes(x=ds, y=y),color="red")
+
+```
+
+En la grafica de los ultimos tres anios podemos ver que fue accurate su predccion con un bajon de consumo de gasolina a mediados de 2020. La prediccion dio lugar a que la tendencia fuera media y nomral, pero en los datos normal (en rojo) podemos ver que se tuvo un decrecimeinto significativo cuando se tuvo la pandemia, lo cual tiene sentido ya que las restricciones no permitian la movilizacion por carro a inicios de esta. 
 
 #### Serie de tiempo Gasolina Super Importacion
 
