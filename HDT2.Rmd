@@ -133,6 +133,8 @@ hist(x= importacion$TotalDiesel, main=paste("Histograma de Diesel Total"))
 
 
 ```
+Podemos observar que las variables: GasolinaSuper, TotalGasolinas, Diesel y TotalDiesel siguen una distribución normal.
+
 
 Cruze de variables con el anio y mes
 ```{r CruzeDeVariables, echo=FALSE}
@@ -145,6 +147,12 @@ plot(y=importacion$TotalDiesel,x=importacion$Mes,ylab="Gasolina Diesel", xlab="M
 
 
 ```
+En las tres gráficas anteriores del cruce de variables de las importaciones de cualquier tipo de gasolina y el año, se puede observar que hay una tendencia a crecer. Esto implica que conforme pasa el tiempo, cada vez se importa más gasolina sin importar su tipo.
+
+Por otro lado, al observar las gráficas del cruce de variables de cualquier tipo de gasolina con los meses, no se puede observar alguna tendencia. Esto implica que sin importar el mes, siempre va a haber una importación de combustible más o menos constante.
+
+
+
 
 
 
@@ -381,9 +389,14 @@ ggplot(pred, aes(x=ds, y=yhat)) +
 
 En la grafica de los ultimos tres anios podemos ver que fue accurate su predccion con un bajon de consumo de gasolina a mediados de 2020. La prediccion dio lugar a que la tendencia fuera media y nomral, pero en los datos normal (en rojo) podemos ver que se tuvo un decrecimeinto significativo cuando se tuvo la pandemia, lo cual tiene sentido ya que las restricciones no permitian la movilizacion por carro a inicios de esta. 
 
+
+
+
+
 #### Serie de tiempo Gasolina Super Importacion
 
 Union de columnas de tiempo
+
 ```{r UnionColumnasSuper, echo=FALSE}
 
 
@@ -400,6 +413,7 @@ importSuper <- data.frame(cantSuper,superDate)
 ```
 
 Creando la serie de tiempo. Viendo incio, fin y frencuencia
+
 ```{r CreandoSerieSuper, echo=FALSE}
 
 importSuper_ts <- xts(importSuper$cantSuper, importSuper$superDate) 
@@ -418,6 +432,7 @@ testS <- tail(importSuper_ts, hS)
 ```
 
 Creando el grafico de la serie
+
 ```{r GraficaSerieSuper, echo=FALSE}
 
 plot(importSuper_ts)
@@ -425,18 +440,22 @@ abline(reg=lm(importSuper_ts~time(importSuper_ts)), col=c("red"))
 
 
 ```
+
 Se observa que es una serie de tiempo no estacionaria ya que su componente tendencia no es constante, si no que es creciente. Ademas, la varianza tampoco es constante.
 
 
 Descomponiendo la serie
+
 ```{r DescomposicionSuper, echo=FALSE}
 dec.GS<-decompose(importSuper_ts)
 plot(dec.GS)
 
 ```
+
 Se puede observar que la componente tendencia es creciente, la componente estacional si tiene un patron y la varianza no es constante. Se tendra que transformar
 
 Transformacion logaritmica para estacionar serie
+
 ```{r}
 logSS <- log(trainS)
 lambda <- BoxCox.lambda(trainS)
@@ -447,28 +466,164 @@ plot(logSS)
 
 
 ```
+
 Al hacer la transformacion logaritmica, se observa que la serie se ha estabilizado un poco mas en media. Sin embargo en varianza sigue lejos de estar constante
 
 Ahora se haran las pruebas de DickeyFuller
+
 ```{r}
 adfTest(trainS)
 unitrootTest(trainS)
 ```
+
 Con las pruebas de Dickey-Fuller, se observa que p es mayor a 0.05. No se puede rechazar Ho y existen raices unitarias. Aunque la serie se vea mas estable en media, aun no es estacionaria en media
 
 
 Ahora se hace con una diferenciacion en la serie de tiempo
+
 ```{r}
 GS_diff<-diff(logSS)
 adfTest(diff(trainS))
 ```
+
 Ahora el valor p si es menor a 0.05. Ahora si se puede rechazar la Ho, y ahora no hay raices unitarias
 
-Valores p y q
-```{r}
+
+
+Valores de p y q
+
+```{r valPQ, echo=FALSE}
 acf(logSS,50) 
 pacf(logSS,50)
 ```
+
+Se observa que el ACF se anula muy rapido y cerca de uno por lo que p puede ser uno. 
+En el PACF, se observa que q es 1 ya que hay un pico en el retardo que se sale en 1.
+Por lo tanto tenemos un modelo ARIMA(1,1,1)
+
+
+Valores p y q del la componente estacional
+
+```{r valPQEstacional, echo=FALSE}
+Acf(logSS,50) 
+Pacf(logSS,50)
+```
+
+p es 1 ya que se tiene solamente un ciclo antes de que se anule
+q es 1 ya que se acerca a la frecuencia de 12, antes de anularse
+Por lo tanto, tenemos un modelo ARIMA (1,1,1)
+
+
+Ahora se comprobara mediante fitarima si en efecto, los coeficiente son significativos
+
+```{r arima, echo=FALSE}
+library(lmtest)
+fitArima <- arima(logSS,order=c(1,1,1),seasonal=c(1,1,1))
+fitAutoArima <- auto.arima(trainS)
+
+coeftest(fitArima)
+coeftest(fitAutoArima)
+```
+
+Como se puede observar, los coeficientes son significativos.
+
+
+
+Ahora se hace el analisis de los residuales
+
+```{r analisisResiduales, echo=FALSE}
+
+qqnorm(fitArima$residuals)
+qqline(fitArima$residuals)
+checkresiduals(fitArima)
+
+```
+
+Los residuos se comportan de manera normal y continua. Ademas, en la prueba L-jung-Box se tuvo un valor de p mayor a 0.05. Por lo que es un modelo apto para predecir.
+
+
+
+Ahora se hace la prediccion arima en si.
+
+```{r prediccion, echo=FALSE}
+
+fitArima %>%
+  forecast(hS) 
+ plot(forecast(fitArima,hS))
+
+
+```
+
+Se puede observar que el algoritmo pudo predecir la tendencia, sin embargo, no pudo predecir los datos.
+
+
+
+
+#### Analisis con profet de facebook gasolina super importacion
+
+```{r prophet, echo=FALSE}
+library(Rcpp)
+library (rlang)
+library(prophet)
+library
+
+df<-data.frame(ds=as.Date(as.yearmon(time(trainS))),y=as.matrix(trainS) )
+testdf<-data.frame(ds=as.Date(as.yearmon(time(test))),y=as.matrix(test) )
+fitProphet<-prophet(df,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = hS,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+
+```
+
+
+```{r, echo=FALSE}
+
+pred<-tail(p,h)
+pred$y<-testdf$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+   geom_line(size=1, alpha=0.8) +
+   geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+   geom_line(data=pred, aes(x=ds, y=y),color="red")
+
+
+```
+Como se puede observar, el ARIMA tuvo una mejor prediccion.
+
+
+#### Prediccion ultimos 3 anios
+```{r, echo=FALSE}
+train <- head(importSuper_ts, round(length(importSuper_ts) * 0.891632653))
+h <- length(importSuper_ts) - length(train)
+test <- tail(importSuper_ts, h)
+end(train)
+fitArima %>%
+  forecast(h) 
+plot(forecast(fitArima,h))
+df<-data.frame(ds=as.Date(as.yearmon(time(train))),y=as.matrix(train) )
+testdf<-data.frame(ds=as.Date(as.yearmon(time(test))),y=as.matrix(test) )
+fitProphet<-prophet(df,yearly.seasonality = T,weekly.seasonality = T)
+future <- make_future_dataframe(fitProphet,periods = h,freq = "month", include_history = T)
+p <- predict(fitProphet,future)
+p<-p[,c("ds","yhat","yhat_lower","yhat_upper")]
+plot(fitProphet,p)
+pred<-tail(p,h)
+pred$y<-testdf$y
+
+
+ggplot(pred, aes(x=ds, y=yhat)) +
+   geom_line(size=1, alpha=0.8) +
+   geom_ribbon(aes(ymin=yhat_lower, ymax=yhat_upper), fill="blue", alpha=0.2) +
+   geom_line(data=pred, aes(x=ds, y=y),color="red")
+
+```
+Se puede observar que la prediccion para el 2021 no es aceptable. Ademas, por el efecto de la pandemia y su comportamiento irregular, la prediccion tuvo peores resultados despues de la misma.
+
+
+
 
 
 ####Linea de tiempo para consumo de gasolina Regular Importacion
@@ -501,6 +656,7 @@ importDiesel <- data.frame(cantDiesel,dieselDate)
 ```
 
 Inicio y fin de la importacion Gasolina Regular 
+
 ```{r}
 importRegular_ts <- xts(importRegular$cantRegular, importRegular$regularDate) 
 importRegular_ts <-ts_ts(importRegular_ts)
